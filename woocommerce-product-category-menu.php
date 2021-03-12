@@ -89,7 +89,7 @@ function jcem_wc_update_menu_content($menu_id, $custom_args=array())
         'orderby'      => 'name',
         'hierarchical' => 1,
         'title_li'     => '',
-        'hide_empty'   => '1'),
+        'hide_empty'   => '1',
     );
 
     $category_args = wp_parse_args($custom_args, $category_args);
