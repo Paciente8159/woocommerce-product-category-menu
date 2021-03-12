@@ -39,7 +39,7 @@ if (!defined('ABSPATH')) {
 add_shortcode('product_category_menu', function ($atts) {
 
     $atts = shortcode_atts([
-        'hide_empty' => '0',
+        'hide_empty' => '1',
         'parent_id' => '0',
         'show_count' => '0',
     ], $atts, 'product_category_menu');
@@ -78,20 +78,22 @@ add_shortcode('product_category_menu', function ($atts) {
     return $content;
 });
 
-function jcem_wc_update_menu_content($menu_id)
+function jcem_wc_update_menu_content($menu_id, $custom_args=array())
 {
     //gets all menu items
     $menu_items = wp_get_nav_menu_items($menu_id);
 
     //get all product categories
-    $args = array(
+    $category_args = array(
         'taxonomy'     => 'product_cat',
         'orderby'      => 'name',
         'hierarchical' => 1,
         'title_li'     => '',
-        'hide_empty'   => apply_filters('jcem_wc_prod_cat_menu_hide_empty', '1'),
+        'hide_empty'   => '1'),
     );
-    $categories = get_categories($args);
+
+    $category_args = wp_parse_args($custom_args, $category_args);
+    $categories = get_categories($category_args);
 
     //starts by removing all existing menu items that are not 
     foreach ($menu_items as $item) {
@@ -147,12 +149,14 @@ function jcem_wc_update_menu_content($menu_id)
 add_action('init', function () {
 
     $menu_id = 0;
-    $menu_exists = wp_get_nav_menu_object('jcem_wc_product_category_menu');
+    $menu_name = 'jcem_wc_product_category_menu' . sanitize_key(apply_filters('jcem_wc_product_category_menu_init_name', ''));
+
+    $menu_exists = wp_get_nav_menu_object($menu_name);
     if (!$menu_exists) {
-        $menu_id = wp_create_nav_menu('jcem_wc_product_category_menu');
-        if (!has_nav_menu('jcem_wc_product_category_menu')) {
+        $menu_id = wp_create_nav_menu($menu_name);
+        if (!has_nav_menu($menu_name)) {
             $locations = get_theme_mod('nav_menu_locations');
-            $locations['jcem_wc_product_category_menu'] = $menu_id;
+            $locations[$menu_name] = $menu_id;
             set_theme_mod('nav_menu_locations', $locations);
         }
     } else {
@@ -160,7 +164,7 @@ add_action('init', function () {
     }
 
     //updates the menu content
-    jcem_wc_update_menu_content($menu_id);
+    jcem_wc_update_menu_content($menu_id, apply_filters('jcem_wc_product_category_menu_init_args', array()));
 });
 
 add_action('wp_enqueue_scripts', function () {
@@ -169,11 +173,17 @@ add_action('wp_enqueue_scripts', function () {
     wp_enqueue_script('woocommerce-product-category-menu', plugin_dir_url(__FILE__) . 'assets/js/woocommerce-product-category-menu.js', array(), true, true);
 });
 
-register_deactivation_hook(__FILE__, function(){
-    $menu_items = wp_get_nav_menu_items('jcem_wc_product_category_menu');
-    foreach ($menu_items as $item) {
-        wp_delete_post($item->ID, true);
-    }
+register_deactivation_hook(__FILE__, function() {
+    $menus = wp_get_nav_menus();
+    $len = strlen('jcem_wc_product_category_menu');
+    foreach($menus as $menu) {
+        if(substr($menu->name, 0, $len) == 'jcem_wc_product_category_menu') {
+            $menu_items = wp_get_nav_menu_items($menu->name);
+            foreach ($menu_items as $item) {
+                wp_delete_post($item->ID, true);
+            }
 
-    wp_delete_nav_menu('jcem_wc_product_category_menu');
+            wp_delete_nav_menu($menu->name);
+        }
+    }
 });
