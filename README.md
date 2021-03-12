@@ -1,5 +1,6 @@
 # woocommerce-product-category-menu
-Adds a Woocommerce automatic category and subcategory product menu (fully nested) for woocommerce via shortcode
+Adds a Woocommerce automatic category and subcategory product menu (fully nested) for woocommerce via shortcode.
+Also generates a menu that is auto updated.
 
 # Customization
 ## Available filters

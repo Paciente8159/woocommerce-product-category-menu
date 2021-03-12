@@ -70,7 +70,7 @@ add_shortcode('product_category_menu', function ($atts) {
             $sub_menu = do_shortcode($nested_shortcode);
             $sub_menu_toggle_control = apply_filters('jcem_wc_toggle_menu_control', '<span class="product-category-submenu-toogle dashicons dashicons-arrow-down"></span>');
             $sub_menu_toggle_control = !empty($sub_menu) ? $sub_menu_toggle_control : '';
-            $content .= '<li class="product-category-menu-item product-category-menu-item-collapsed"><div class="product-category-menu-item-control"><a href="' . get_term_link($cat->slug, 'product_cat') . '">' . $cat->name . $cat_count . '</a>'. $sub_menu_toggle_control .'</div>' . $sub_menu . '</li>';
+            $content .= '<li class="product-category-menu-item product-category-menu-item-collapsed"><div class="product-category-menu-item-control"><a href="' . get_term_link($cat->slug, 'product_cat') . '">' . $cat->name . $cat_count . '</a>' . $sub_menu_toggle_control . '</div>' . $sub_menu . '</li>';
         }
         $content .= '</ul>';
     }
@@ -78,8 +78,102 @@ add_shortcode('product_category_menu', function ($atts) {
     return $content;
 });
 
+function jcem_wc_update_menu_content($menu_id)
+{
+    //gets all menu items
+    $menu_items = wp_get_nav_menu_items($menu_id);
+
+    //get all product categories
+    $args = array(
+        'taxonomy'     => 'product_cat',
+        'orderby'      => 'name',
+        'hierarchical' => 1,
+        'title_li'     => '',
+        'hide_empty'   => apply_filters('jcem_wc_prod_cat_menu_hide_empty', '1'),
+    );
+    $categories = get_categories($args);
+
+    //starts by removing all existing menu items that are not 
+    foreach ($menu_items as $item) {
+        $found = false;
+        foreach ($categories as $cat) {
+            if($item->post_excerpt == $cat->slug.'-'.strval($cat->term_id)) {
+                $found = true;
+                break;
+            }
+        }
+
+        //menu item not found (trash it)
+        if(!$found) {
+            wp_delete_post($item->ID, true);
+        }
+    }
+
+    //starts populating the menu
+    $nodes = [0];
+    $node_relations = [];
+
+    for($i = 0; $i < count($nodes); $i++) {
+        $current_node = $nodes[$i];
+        foreach ($categories as $cat) {
+            if($cat->parent == $current_node) {
+                array_push($nodes, $cat->term_id);
+                $args = array(
+                    'menu-item-title' =>  __($cat->name),
+                    'menu-item-url' =>  get_term_link($cat->term_id, 'product_cat'),
+                    'menu-item-status' => 'publish',
+                    'menu-item-attr-title' => $cat->slug . '-' . strval($cat->term_id),
+                );
+
+                if (isset($node_relations[$current_node])) {
+                    $args['menu-item-parent-id'] = $node_relations[$current_node];
+                }
+
+                $update_id = 0;
+                foreach ($menu_items as $item) {
+                    if ($item->post_excerpt == $cat->slug . '-' . strval($cat->term_id)) {
+                        $update_id = $item->ID;
+                        break;
+                    }
+                }
+
+                $parent_item = wp_update_nav_menu_item($menu_id, $update_id, $args);
+                $node_relations[$cat->term_id] = $parent_item;
+            }
+        }
+    }
+}
+
+add_action('init', function () {
+
+    $menu_id = 0;
+    $menu_exists = wp_get_nav_menu_object('jcem_wc_product_category_menu');
+    if (!$menu_exists) {
+        $menu_id = wp_create_nav_menu('jcem_wc_product_category_menu');
+        if (!has_nav_menu('jcem_wc_product_category_menu')) {
+            $locations = get_theme_mod('nav_menu_locations');
+            $locations['jcem_wc_product_category_menu'] = $menu_id;
+            set_theme_mod('nav_menu_locations', $locations);
+        }
+    } else {
+        $menu_id = $menu_exists->term_id;
+    }
+
+    //updates the menu content
+    jcem_wc_update_menu_content($menu_id);
+});
+
 add_action('wp_enqueue_scripts', function () {
     wp_enqueue_style('dashicons');
     wp_enqueue_style('woocommerce-product-category-menu', plugin_dir_url(__FILE__) . 'assets/css/woocommerce-product-category-menu.css', array());
     wp_enqueue_script('woocommerce-product-category-menu', plugin_dir_url(__FILE__) . 'assets/js/woocommerce-product-category-menu.js', array(), true, true);
+});
+
+register_deactivation_hook(__FILE__, function(){
+    $menu_items = wp_get_nav_menu_items('jcem_wc_product_category_menu');
+    foreach ($menu_items as $item) {
+        wp_delete_post($item->ID, true);
+    }
+
+    wp_delete_nav_menu('jcem_wc_product_category_menu');
 });
