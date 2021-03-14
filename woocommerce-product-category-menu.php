@@ -114,7 +114,6 @@ function jcem_wc_update_menu_content($menu_id, $custom_args=array())
     //starts populating the menu
     $nodes = [0];
     $node_relations = [];
-
     for($i = 0; $i < count($nodes); $i++) {
         $current_node = $nodes[$i];
         foreach ($categories as $cat) {
@@ -132,14 +131,21 @@ function jcem_wc_update_menu_content($menu_id, $custom_args=array())
                 }
 
                 $update_id = 0;
+                $modified = 0;
                 foreach ($menu_items as $item) {
                     if ($item->post_excerpt == $cat->slug . '-' . strval($cat->term_id)) {
                         $update_id = $item->ID;
+                        $modified |= ($args['menu-item-title'] != $item->title);
+                        $modified |= ($args['menu-item-url'] != $item->url);
+                        $modified |= ($args['menu-item-status'] != $item->post_status);
+                        $modified |= ($args['menu-item-attr-title'] != $item->post_excerpt);
                         break;
                     }
                 }
 
-                $parent_item = wp_update_nav_menu_item($menu_id, $update_id, $args);
+                if($modified){
+                    $parent_item = wp_update_nav_menu_item($menu_id, $update_id, $args);
+                }
                 $node_relations[$cat->term_id] = $parent_item;
             }
         }
