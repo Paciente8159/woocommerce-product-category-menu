@@ -131,10 +131,11 @@ function jcem_wc_update_menu_content($menu_id, $custom_args=array())
                 }
 
                 $update_id = 0;
-                $modified = 0;
+                $modified = 1;
                 foreach ($menu_items as $item) {
                     if ($item->post_excerpt == $cat->slug . '-' . strval($cat->term_id)) {
                         $update_id = $item->ID;
+                        $modified = 0;
                         $modified |= ($args['menu-item-title'] != $item->title);
                         $modified |= ($args['menu-item-url'] != $item->url);
                         $modified |= ($args['menu-item-status'] != $item->post_status);
