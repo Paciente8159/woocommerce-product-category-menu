@@ -144,6 +144,7 @@ function jcem_wc_update_menu_content($menu_id, $custom_args=array())
                     }
                 }
 
+                $parent_item = $update_id;
                 if($modified){
                     $parent_item = wp_update_nav_menu_item($menu_id, $update_id, $args);
                 }
