@@ -16,7 +16,7 @@
  * Plugin Name:       JCEM Woocommerce product category/subcategory menu
  * Plugin URI:        https://github.com/Paciente8159
  * Description:       Adds a dynamic category and subcategory product menu for woocommerce via shortcode.
- * Version:           1.1.0
+ * Version:           1.0.0
  * Author:            Joao Martins
  * Author URI:        https://github.com/Paciente8159
  * License:           GPL-3.0+
@@ -77,6 +77,22 @@ add_shortcode('product_category_menu', function ($atts) {
 
     return $content;
 });
+
+function jcem_wc_build_menu_item_term($id, $name) {
+    $dummy = [];
+    $dummy['term_id'] = $id;
+    $dummy['name'] = $name;
+    $dummy['slug'] = $name;
+    $dummy['term_group'] = 0;
+    $dummy['term_taxonomy_id'] = $id;
+    $dummy['taxonomy'] = 'nav_menu';
+    $dummy['description'] = '';
+    $dummy['parent'] = 0;
+    $dummy['count'] = 0;
+    $dummy['filter'] = 'raw';
+    $dummy['object_id'] = $id;
+    return new WP_Term((object)$dummy);
+}
 
 function jcem_wc_build_menu_content($top_id = 0, $top_menu_id = 0, $custom_args = array())
 {
@@ -151,7 +167,7 @@ function jcem_wc_build_menu_content($top_id = 0, $top_menu_id = 0, $custom_args 
 
 add_filter('wp_get_nav_menu_items', function ($items, $menu, $args) {
 
-    $custom_menus = [['name' => 'jcem_wc_product_category_menu', 'taxonomy' => 'product_cat', 'root_id' => 0]];
+    $custom_menus = [['name' => 'jcem_wc_product_category_menu', 'taxonomy' => 'product_cat', 'root_term_id' => 0]];
     $custom_menus = apply_filters('jcem_wc_product_category_custom_menus', $custom_menus);
     $count = -1;
 
@@ -159,8 +175,8 @@ add_filter('wp_get_nav_menu_items', function ($items, $menu, $args) {
     foreach ($custom_menus as $custom_menu) {
         if ($menu->slug === $custom_menu['name']) {
             //get all product categories
-            $root_item_id = intval($custom_menu['root_id'], 10);
-            $root_menu_item_id = intval(isset($custom_menu['root_menu_id']) ? $custom_menu['root_menu_id'] : $custom_menu['root_id'], 10);
+            $root_item_id = intval($custom_menu['root_term_id'], 10);
+            $root_menu_item_id = intval(isset($custom_menu['root_menu_id']) ? $custom_menu['root_menu_id'] : $custom_menu['root_term_id'], 10);
             $args = isset($custom_menu['query_args']) ? $custom_menu['query_args'] : array();
             return jcem_wc_build_menu_content($root_item_id, $root_menu_item_id, $args);
         }
@@ -185,7 +201,7 @@ add_filter('wp_get_nav_menu_items', function ($items, $menu, $args) {
 
     return $items;
 }, 10, 3);
-
+/*
 add_filter('wp_get_nav_menu_object', function ($menu_obj, $menu) {
     if ($menu_obj === false) {
         $custom_menus = [['name' => 'jcem_wc_product_category_menu', 'taxonomy' => 'product_cat', 'root_id' => 0]];
@@ -193,18 +209,7 @@ add_filter('wp_get_nav_menu_object', function ($menu_obj, $menu) {
         $count = -1;
         foreach ($custom_menus as $custom_menu) {
             if ($menu === $count) {
-                $dummy = [];
-                $dummy['term_id'] = $count;
-                $dummy['name'] = $custom_menu['name'];
-                $dummy['slug'] = $custom_menu['name'];
-                $dummy['term_group'] = 0;
-                $dummy['term_taxonomy_id'] = $count;
-                $dummy['taxonomy'] = 'nav_menu';
-                $dummy['description'] = '';
-                $dummy['parent'] = 0;
-                $dummy['count'] = 0;
-                $dummy['filter'] = 'raw';
-                return new WP_Term((object)$dummy);
+                return jcem_wc_build_menu_item_term($count, $custom_menu['name']);
             }
             $count--;
         }
@@ -219,24 +224,25 @@ add_filter('get_terms', function ($terms, $taxonomies, $args, $term_query) {
         $custom_menus = apply_filters('jcem_wc_product_category_custom_menus', $custom_menus);
         $count = -1;
         foreach ($custom_menus as $custom_menu) {
-            $dummy = [];
-            $dummy['term_id'] = $count;
-            $dummy['name'] = $custom_menu['name'];
-            $dummy['slug'] = $custom_menu['name'];
-            $dummy['term_group'] = 0;
-            $dummy['term_taxonomy_id'] = $count;
-            $dummy['taxonomy'] = 'nav_menu';
-            $dummy['description'] = '';
-            $dummy['parent'] = 0;
-            $dummy['count'] = 0;
-            $dummy['filter'] = 'raw';
-            array_push($terms, new WP_Term((object)$dummy));
+            array_push($terms, jcem_wc_build_menu_item_term($count, $custom_menu['name']));
             $count--;
         }
     }
 
     return $terms;
 }, 10, 4);
+
+add_filter('wp_get_object_terms', function ($terms, $object_ids, $taxonomies, $args) {
+    if ("'nav_menu'" == $taxonomies) {
+        if(gettype($terms[0])!='object') {
+            for($i = 0; $i<count($terms); $i++) {
+                if (gettype($terms[$i]) == 'object') {
+                    $terms[$i] = $terms[$i]->term_id;
+                }
+            }
+        }
+    }
+}, 10, 4);*/
 
 add_action('wp_enqueue_scripts', function () {
     wp_enqueue_style('dashicons');
